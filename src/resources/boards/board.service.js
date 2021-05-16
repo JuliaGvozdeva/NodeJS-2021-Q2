@@ -8,4 +8,6 @@ const post = (boardData) => boardRepo.post(boardData);
 
 const put = (id, boardData) => boardRepo.put(id, boardData);
 
-module.exports = {getAll, get, post, put};
+const deleteBoard = (id) => boardRepo.removeBoard(id);
+
+module.exports = {getAll, get, post, put, deleteBoard};

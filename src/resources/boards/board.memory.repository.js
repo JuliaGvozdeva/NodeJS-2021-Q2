@@ -1,5 +1,5 @@
 
-const {getAllEntities, getEntity, addEntity, putBoard} = require('../../virtualDB');
+const {getAllEntities, getEntity, addEntity, putBoard, deleteBoard} = require('../../virtualDB');
 
 const TABLE_NAME = 'Boards';
 
@@ -9,8 +9,8 @@ const get = async id => getEntity(TABLE_NAME, id);
 
 const post = async boardData => addEntity(TABLE_NAME, boardData);
 
-const put = async (id, boardData) => putBoard(TABLE_NAME, id, boardData)
+const put = async (id, boardData) => putBoard(TABLE_NAME, id, boardData);
 
-// const removeUser = async id => deleteUser(id)
+const removeBoard= async id => deleteBoard(id);
 
-module.exports = { getAll, get, post, put};
+module.exports = { getAll, get, post, put, removeBoard};

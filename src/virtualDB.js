@@ -172,7 +172,7 @@ const updateTask = (tableName, id, taskData) => {
 }
 
 const deleteTask = (id) => {
-    const found = db.Tasks.some((task) => task.id === id);
+    const found = checkExistingEntity('Tasks', id);
 
     if (found) {
         db.Tasks = db.Tasks.filter((task) => task.id !== id);
@@ -183,7 +183,7 @@ const deleteTask = (id) => {
 }
 
 
-const deleteUser = id => {
+const deleteUser = (id) => {
     const found = db.Users.some((user) => user.id === id);
 
     if (found) {
@@ -211,4 +211,23 @@ const deleteUser = id => {
     return false;    
 }
 
-module.exports = { getAllEntities, getEntity, addUser, updateUser, deleteUser, addEntity, putBoard, addTask, updateTask, deleteTask}
+const deleteBoard = (id) => {
+    const found = checkExistingEntity('Boards', id);
+    let successDeleting = true;
+
+    if (found) {
+        db.Boards = db.Boards.filter((task) => task.id !== id);
+
+        db.Tasks.forEach((task) => {
+            if (task.boardId === id) {
+                successDeleting = deleteTask(task.id);
+            }
+        })
+
+        return successDeleting;
+    }
+
+    return false;  
+}
+
+module.exports = { getAllEntities, getEntity, addUser, updateUser, deleteUser, addEntity, putBoard, addTask, updateTask, deleteTask, deleteBoard}

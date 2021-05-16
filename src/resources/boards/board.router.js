@@ -41,4 +41,14 @@ router.route('/:id').put(jsonParser, async (req, res) => {
     }
   });
 
+  router.route('/:id').delete(async (req, res) => {
+    const answer = await boardsService.deleteBoard(req.params.id);
+  
+    if (answer) {
+      res.sendStatus(204);
+    } else {
+      res.sendStatus(404);
+    }
+  });
+
 module.exports = router;
