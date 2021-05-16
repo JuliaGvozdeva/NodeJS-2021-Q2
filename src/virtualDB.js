@@ -15,12 +15,25 @@ const checkExistingEntity = (table, id) => {
     return found;
 }
 
-const getEntity = (tableName, id) => {
+
+const getAllBoardTasks = (tableName, boardId) => {
+    if (checkExistingEntity('Boards', boardId)) {
+        return db[tableName].filter((entity) => entity.boardId === boardId);
+    } 
+        return {error: `There is no board with id = ${boardId}. Check the value and try again.`}
+    
+}
+
+const getEntity = (tableName, id, boardId) => {
     if (checkExistingEntity(tableName, id)) {
         const foundEntity = db[tableName].filter(entity => entity.id === id);
 
         if (tableName === 'Users' && foundEntity[0]) {
             return User.toResponse(foundEntity[0]);
+        } if (tableName === 'Tasks' && foundEntity[0]) {
+            if (foundEntity[0].boardId !== boardId) {
+                return {error: `There is no task with boardId=${boardId}. Check the value and try again.`}
+            }
         }
 
         return foundEntity[0];
@@ -35,12 +48,16 @@ const addUser = (userData) => {
     return User.toResponse(newUser);
 }
 
-const addEntity = (tableName, entityData) => {
+const addEntity = (tableName, entityData, boardId) => {
     let newEntity = {};
     if (tableName === 'Boards') {
         newEntity = new Board(entityData);
     } else if (tableName === 'Tasks') {
-        newEntity = new Task(entityData);
+        const newEntityData = entityData;
+        if (!entityData.boardId) {
+            newEntityData.boardId = boardId;
+        }
+        newEntity = new Task(newEntityData);
     }
 
     db[tableName].push(newEntity);
@@ -99,12 +116,18 @@ const putBoard = (tableName, id, boardData) => {
 
 const returnError = (id) => ({error: `The entity with id = ${id} was not found. Check the value and try again.`})
 
-const checkTaskEntities = (userId, boardId, columnId) => { 
-    if (userId && !checkExistingEntity('Users', userId)) {
+const checkTaskEntities = (userId, boardId, columnId, requestBoardId) => { 
+    if (boardId && requestBoardId) {
+        if (boardId !== requestBoardId) {
+            return {error: `BoardId in request and body don't match.`}
+        } if (!checkExistingEntity('Boards', boardId)) {       
+            return returnError(boardId);
+        } if (!checkExistingEntity('Boards', requestBoardId)) {       
+            return returnError(requestBoardId);
+        }
+    } else if (userId && !checkExistingEntity('Users', userId)) {
         return returnError(userId);
-    } if (boardId && !checkExistingEntity('Boards', boardId)) {
-        return returnError(boardId);
-    } if (columnId) {
+    } else if (columnId) {
         let flagExist = false;
 
         db.Boards.forEach((board) => {
@@ -124,23 +147,21 @@ const checkTaskEntities = (userId, boardId, columnId) => {
     return 'Success';
 }
 
-const addTask = (taskData) => {
+const addTask = (taskData, requestBoardId) => {
     const userId = taskData.userId || null;
-    const {boardId} = taskData;
-    const {columnId} = taskData;
-    const checkTaskData = checkTaskEntities(userId, boardId, columnId);
+    const {boardId, columnId} = taskData;
+    const checkTaskData = checkTaskEntities(userId, boardId, columnId, requestBoardId);
 
     if (checkTaskData !== 'Success') {
         return checkTaskData;
     } 
-        return addEntity('Tasks', taskData);
+        return addEntity('Tasks', taskData, requestBoardId);
     
 }
 
-const updateTask = (tableName, id, taskData) => {
-
+const updateTask = (tableName, id, taskData, requestBoardId) => {
     if (checkExistingEntity(tableName, id)) {
-        const checkTaskData = checkTaskEntities(taskData.userId, taskData.boardId, taskData.columnId);
+        const checkTaskData = checkTaskEntities(taskData.userId, taskData.boardId, taskData.columnId, requestBoardId);
 
         if (checkTaskData !== 'Success') {
             return checkTaskData;
@@ -171,8 +192,8 @@ const updateTask = (tableName, id, taskData) => {
     return false;    
 }
 
-const deleteTask = (id) => {
-    const found = checkExistingEntity('Tasks', id);
+const deleteTask = (id, boardId) => {
+    const found = db.Tasks.some((entity) => entity.id === id && entity.boardId === boardId);
 
     if (found) {
         db.Tasks = db.Tasks.filter((task) => task.id !== id);
@@ -181,7 +202,6 @@ const deleteTask = (id) => {
 
     return false;  
 }
-
 
 const deleteUser = (id) => {
     const found = db.Users.some((user) => user.id === id);
@@ -220,7 +240,7 @@ const deleteBoard = (id) => {
 
         db.Tasks.forEach((task) => {
             if (task.boardId === id) {
-                successDeleting = deleteTask(task.id);
+                successDeleting = deleteTask(task.id, id);
             }
         })
 
@@ -230,4 +250,4 @@ const deleteBoard = (id) => {
     return false;  
 }
 
-module.exports = { getAllEntities, getEntity, addUser, updateUser, deleteUser, addEntity, putBoard, addTask, updateTask, deleteTask, deleteBoard}
+module.exports = { getAllEntities, getEntity, addUser, updateUser, deleteUser, addEntity, putBoard, addTask, updateTask, deleteTask, deleteBoard, getAllBoardTasks}
