@@ -1,5 +1,6 @@
 const User = require('./resources/users/user.model');
 const Board = require('./resources/boards/board.model');
+const Task = require('./resources/tasks/task.model');
 
 const db = {
     Users: [],
@@ -36,24 +37,15 @@ const addUser = (userData) => {
 
 const addEntity = (tableName, entityData) => {
     let newEntity = {};
-    if (tableName === "Boards") {
+    if (tableName === 'Boards') {
         newEntity = new Board(entityData);
+    } else if (tableName === 'Tasks') {
+        newEntity = new Task(entityData);
     }
 
     db[tableName].push(newEntity);
 
     return newEntity;
-}
-
-const deleteUser = id => {
-    const found = db.Users.some((user) => user.id === id);
-
-    if (found) {
-        db.Users = db.Users.filter(user => user.id === id);
-        return true;
-    }
-
-    return false;    
 }
 
 const updateUser = (id, userData) => {
@@ -105,4 +97,118 @@ const putBoard = (tableName, id, boardData) => {
     return false;    
 }
 
-module.exports = { getAllEntities, getEntity, addUser, updateUser, deleteUser, addEntity, putBoard}
+const returnError = (id) => ({error: `The entity with id = ${id} was not found. Check the value and try again.`})
+
+const checkTaskEntities = (userId, boardId, columnId) => { 
+    if (userId && !checkExistingEntity('Users', userId)) {
+        return returnError(userId);
+    } if (boardId && !checkExistingEntity('Boards', boardId)) {
+        return returnError(boardId);
+    } if (columnId) {
+        let flagExist = false;
+
+        db.Boards.forEach((board) => {
+            if (boardId === board.id) {
+                const exist = board.columns.some((entity) => entity.id === columnId);
+                if (exist) {
+                    flagExist = true;
+                }
+            }
+        });
+
+        if (!flagExist) {
+            return {error: `There is no column with id = ${columnId} in the board with id = ${boardId}`};
+        }
+    }
+
+    return 'Success';
+}
+
+const addTask = (taskData) => {
+    const userId = taskData.userId || null;
+    const {boardId} = taskData;
+    const {columnId} = taskData;
+    const checkTaskData = checkTaskEntities(userId, boardId, columnId);
+
+    if (checkTaskData !== 'Success') {
+        return checkTaskData;
+    } 
+        return addEntity('Tasks', taskData);
+    
+}
+
+const updateTask = (tableName, id, taskData) => {
+
+    if (checkExistingEntity(tableName, id)) {
+        const checkTaskData = checkTaskEntities(taskData.userId, taskData.boardId, taskData.columnId);
+
+        if (checkTaskData !== 'Success') {
+            return checkTaskData;
+        } 
+            let updateData = {};
+
+            db[tableName] = db[tableName].map((entity) => {
+                if (entity.id === id) {
+                    updateData = {
+                        id,
+                        title: taskData.title,
+                        order: taskData.order,
+                        description: taskData.description,
+                        userId: taskData.userId || null,
+                        boardId: taskData.boardId,
+                        columnId: taskData.columnId,
+                    }
+                    return new Task(updateData);
+                }
+        
+                return entity;
+            });
+            
+            return updateData;
+        
+    } 
+
+    return false;    
+}
+
+const deleteTask = (id) => {
+    const found = db.Tasks.some((task) => task.id === id);
+
+    if (found) {
+        db.Tasks = db.Tasks.filter((task) => task.id !== id);
+        return true;
+    }
+
+    return false;  
+}
+
+
+const deleteUser = id => {
+    const found = db.Users.some((user) => user.id === id);
+
+    if (found) {
+        db.Tasks.forEach((task) => {
+            if (task.userId === id) {
+                const updatedTask = {
+                    id: task.id,
+                    title: task.title,
+                    order: task.order,
+                    description: task.description,
+                    userId: null,
+                    boardId: task.boardId,
+                    columnId: task.columnId,
+                };
+                
+                updateTask('Tasks', task.id, updatedTask);
+            }
+        });
+
+        db.Users = db.Users.filter((user) => user.id !== id);
+
+        return true;
+    }
+
+    return false;    
+}
+
+module.exports = { getAllEntities, getEntity, addUser, updateUser, deleteUser, addEntity, putBoard, addTask, updateTask, deleteTask}
